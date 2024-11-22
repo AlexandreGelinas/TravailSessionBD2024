@@ -137,3 +137,87 @@ END;
 //
 
 DELIMITER ;
+
+-- Insertion des données ///////////////////////////////////////////////////////////////////////////////
+
+-- Insertion Adherents
+
+INSERT INTO Adherents (ID, Nom, Prenom, Adresse, DateNaissance, Age)
+VALUES 
+('AL-1995-123', 'Lemoine', 'Alice', '123 Rue de Paris, Paris', '1995-06-15', 28),
+('JB-1990-456', 'Benoit', 'Jean', '456 Avenue de Lyon, Lyon', '1990-11-10', 33),
+('ML-1985-789', 'Lopez', 'Marie', '789 Boulevard de Lille, Lille', '1985-04-22', 38),
+('DC-1998-321', 'Carter', 'David', '321 Allée des Pins, Toulouse', '1998-09-15', 25),
+('EG-1992-654', 'Garcia', 'Emma', '654 Place des Érables, Marseille', '1992-03-12', 31),
+('PM-1987-987', 'Martin', 'Paul', '987 Chemin des Roses, Nice', '1987-01-05', 36),
+('TS-1999-246', 'Simon', 'Thomas', '246 Rue de la Forêt, Bordeaux', '1999-08-07', 24),
+('CR-1991-369', 'Roux', 'Camille', '369 Rue des Vignes, Nantes', '1991-12-19', 32),
+('BN-1988-159', 'Nicolas', 'Benjamin', '159 Avenue des Champs, Strasbourg', '1988-02-27', 35),
+('LE-1996-753', 'Eloise', 'Lucie', '753 Rue des Lilas, Grenoble', '1996-05-30', 27);
+
+-- Insertion Activites
+
+INSERT INTO Activites (Nom, Type, CoutOrganisation, PrixVenteParClient)
+VALUES 
+('Yoga', 'Sport', 200.00, 15.00),
+('Zumba', 'Sport', 250.00, 20.00),
+('Peinture', 'Art', 150.00, 25.00),
+('Cuisine', 'Loisirs', 300.00, 30.00),
+('Théâtre', 'Art', 400.00, 50.00),
+('Escalade', 'Sport', 500.00, 40.00),
+('Photographie', 'Art', 250.00, 35.00),
+('Randonnée', 'Nature', 100.00, 10.00),
+('Jardinage', 'Nature', 150.00, 15.00),
+('Informatique', 'Technologie', 350.00, 40.00);
+
+-- Insertion Seances
+
+INSERT INTO Seances (idActivite, DateHeure, NombrePlaces)
+VALUES 
+(1, '2024-01-10 10:00:00', 20),
+(2, '2024-01-15 18:00:00', 25),
+(3, '2024-02-01 14:00:00', 15),
+(4, '2024-02-05 11:00:00', 10),
+(5, '2024-02-10 19:00:00', 30),
+(6, '2024-03-12 09:00:00', 12),
+(7, '2024-03-20 16:00:00', 20),
+(8, '2024-04-05 08:00:00', 25),
+(9, '2024-04-10 10:30:00', 15),
+(10, '2024-05-01 15:00:00', 18);
+
+-- Insertion Participation 
+
+INSERT INTO Participations (idAdherent, idSeance, Note)
+VALUES 
+('AL-1995-123', 1, 8.5),
+('JB-1990-456', 2, 9.0),
+('ML-1985-789', 3, 7.5),
+('DC-1998-321', 4, 8.0),
+('EG-1992-654', 5, 9.5),
+('PM-1987-987', 6, NULL),
+('TS-1999-246', 7, 8.0),
+('CR-1991-369', 8, 7.0),
+('BN-1988-159', 9, 6.5),
+('LE-1996-753', 10, 8.0);
+
+-- Insertion EvaluationActivites
+
+INSERT INTO Evaluations (idAdherent, idActivite, Note, Commentaire)
+VALUES 
+('AL-1995-123', 1, 8.0, 'Très relaxant et bien organisé.'),
+('JB-1990-456', 2, 9.0, 'Excellente ambiance, très dynamique !'),
+('ML-1985-789', 3, 7.5, 'Bonne activité, mais manque un peu de matériel.'),
+('DC-1998-321', 4, 8.5, 'Atelier intéressant et formateur.'),
+('EG-1992-654', 5, 9.5, 'Magnifique prestation, rien à redire.'),
+('PM-1987-987', 6, 8.0, 'Très bien encadré, bonne expérience.'),
+('TS-1999-246', 7, 7.5, 'Correct, mais pourrait être amélioré.'),
+('CR-1991-369', 8, 7.0, 'Bonne activité de plein air.'),
+('BN-1988-159', 9, 6.5, 'Sympathique mais un peu répétitif.'),
+('LE-1996-753', 10, 8.0, 'Atelier très enrichissant.');
+
+-- Insertion Administrateur
+
+INSERT INTO Administrateurs (ID, MotDePasse)
+VALUES
+(101,'Secret1234'),
+(102,'Secret5678');
