@@ -3,15 +3,17 @@
 
 -- Création des tables ////////////////////////////////////////////////////////////////
 
--- Table Adherents (ajouter motPasse maybe ?)
+-- Table Adherents
 CREATE TABLE Adherents (
-    ID VARCHAR(20) PRIMARY KEY,
+    ID INT PRIMARY KEY AUTO_INCREMENT,
     Nom VARCHAR(100) NOT NULL,
     Prenom VARCHAR(100) NOT NULL,
     Adresse TEXT NOT NULL,
     DateNaissance DATE NOT NULL,
     Age INT NOT NULL, 
-    CONSTRAINT Verif_Age CHECK (Age >= 18)
+    CONSTRAINT Verif_Age CHECK (Age >= 18),
+    MotDePasse VARCHAR(255) NOT NULL,
+    CodeAdherent VARCHAR(255)
 );
 -- Table Activites
 CREATE TABLE Activites (
@@ -33,7 +35,7 @@ CREATE TABLE Seances (
 
 -- Table Participations
 CREATE TABLE Participations (
-    idAdherent VARCHAR(20) NOT NULL,
+    idAdherent INT NOT NULL,
     idSeance INT NOT NULL,
     Note DECIMAL(3, 2),
     PRIMARY KEY (idAdherent, idSeance),
@@ -49,9 +51,9 @@ CREATE TABLE Administrateurs (
 
 -- Table d'évaluation
 
-CREATE TABLE EvaluationsActivites (
+CREATE TABLE Evaluations (
     ID INT AUTO_INCREMENT PRIMARY KEY,
-    idAdherent VARCHAR(20) NOT NULL,
+    idAdherent INT NOT NULL,
     idActivite INT NOT NULL,
     Note DECIMAL(3, 2) NOT NULL CHECK (Note >= 0 AND Note <= 10),
     Commentaire TEXT,
@@ -69,11 +71,10 @@ SET NEW.Age = YEAR(CURDATE()) - YEAR(NEW.DateNaissance);
 
 -- Trigger pour construire le numéro d'identification de l'adhérent (AG-1995-150)
 
-DELIMITER //
-
-CREATE TRIGGER Generer_ID_Adherent
-BEFORE INSERT ON Adherents
-FOR EACH ROW
+create definer = `1372735`@`%` trigger Generer_ID_Adherent
+    before insert
+    on adherents
+    for each row
 BEGIN
     DECLARE initiales VARCHAR(3);
     DECLARE anneeNaissance CHAR(4);
@@ -89,11 +90,9 @@ BEGIN
     SET randomNum = LPAD(FLOOR(1 + (RAND() * 999)), 3, '0');
 
     -- Produit final
-    SET NEW.ID = CONCAT(initiales, '-', anneeNaissance, '-', randomNum);
+    SET NEW.CodeAdherent = CONCAT(initiales, '-', anneeNaissance, '-', randomNum);
 END;
-//
 
-DELIMITER ;
 
 -- Trigger pour gérer le nombre de place dispo dans chaque séance
 
@@ -142,18 +141,19 @@ DELIMITER ;
 
 -- Insertion Adherents
 
-INSERT INTO Adherents (ID, Nom, Prenom, Adresse, DateNaissance, Age)
-VALUES 
-('AL-1995-123', 'Lemoine', 'Alice', '123 Rue de Paris, Paris', '1995-06-15', 28),
-('JB-1990-456', 'Benoit', 'Jean', '456 Avenue de Lyon, Lyon', '1990-11-10', 33),
-('ML-1985-789', 'Lopez', 'Marie', '789 Boulevard de Lille, Lille', '1985-04-22', 38),
-('DC-1998-321', 'Carter', 'David', '321 Allée des Pins, Toulouse', '1998-09-15', 25),
-('EG-1992-654', 'Garcia', 'Emma', '654 Place des Érables, Marseille', '1992-03-12', 31),
-('PM-1987-987', 'Martin', 'Paul', '987 Chemin des Roses, Nice', '1987-01-05', 36),
-('TS-1999-246', 'Simon', 'Thomas', '246 Rue de la Forêt, Bordeaux', '1999-08-07', 24),
-('CR-1991-369', 'Roux', 'Camille', '369 Rue des Vignes, Nantes', '1991-12-19', 32),
-('BN-1988-159', 'Nicolas', 'Benjamin', '159 Avenue des Champs, Strasbourg', '1988-02-27', 35),
-('LE-1996-753', 'Eloise', 'Lucie', '753 Rue des Lilas, Grenoble', '1996-05-30', 27);
+INSERT INTO Adherents (Nom, Prenom, Adresse, DateNaissance, Age, MotDePasse, CodeAdherent)
+VALUES
+('Lemoine', 'Alice', '123 Rue de Paris, Paris', '1995-06-15', 28, 'Pomme123', 'AL-1995-001'),
+('Benoit', 'Jean', '456 Avenue de Lyon, Lyon', '1990-11-10', 33, 'Orange123', 'BE-1990-002'),
+('Lopez', 'Marie', '789 Boulevard de Lille, Lille', '1985-04-22', 38, 'Courge123', 'LO-1985-003'),
+('Carter', 'David', '321 Allée des Pins, Toulouse', '1998-09-15', 25, 'Aubergine123', 'CA-1998-004'),
+('Garcia', 'Emma', '654 Place des Érables, Marseille', '1992-03-12', 31, 'Citrouille123', 'GA-1992-005'),
+('Martin', 'Paul', '987 Chemin des Roses, Nice', '1987-01-05', 36, 'Raisin123', 'MA-1987-006'),
+('Simon', 'Thomas', '246 Rue de la Forêt, Bordeaux', '1999-08-07', 24, 'Concombre123', 'SI-1999-007'),
+('Roux', 'Camille', '369 Rue des Vignes, Nantes', '1991-12-19', 32, 'Zuccini123', 'RO-1991-008'),
+('Nicolas', 'Benjamin', '159 Avenue des Champs, Strasbourg', '1988-02-27', 35, 'Poivron123', 'NI-1988-009'),
+('Eloise', 'Lucie', '753 Rue des Lilas, Grenoble', '1996-05-30', 27, 'Tomate123', 'EL-1996-010');
+
 
 -- Insertion Activites
 
@@ -204,16 +204,16 @@ VALUES
 
 INSERT INTO Evaluations (idAdherent, idActivite, Note, Commentaire)
 VALUES 
-('AL-1995-123', 1, 8.0, 'Très relaxant et bien organisé.'),
-('JB-1990-456', 2, 9.0, 'Excellente ambiance, très dynamique !'),
-('ML-1985-789', 3, 7.5, 'Bonne activité, mais manque un peu de matériel.'),
-('DC-1998-321', 4, 8.5, 'Atelier intéressant et formateur.'),
-('EG-1992-654', 5, 9.5, 'Magnifique prestation, rien à redire.'),
-('PM-1987-987', 6, 8.0, 'Très bien encadré, bonne expérience.'),
-('TS-1999-246', 7, 7.5, 'Correct, mais pourrait être amélioré.'),
-('CR-1991-369', 8, 7.0, 'Bonne activité de plein air.'),
-('BN-1988-159', 9, 6.5, 'Sympathique mais un peu répétitif.'),
-('LE-1996-753', 10, 8.0, 'Atelier très enrichissant.');
+(1, 1, 8.0, 'Très relaxant et bien organisé.'),
+(2, 2, 9.0, 'Excellente ambiance, très dynamique !'),
+(3, 3, 7.5, 'Bonne activité, mais manque un peu de matériel.'),
+(4, 4, 8.5, 'Atelier intéressant et formateur.'),
+(5, 5, 9.5, 'Magnifique prestation, rien à redire.'),
+(6, 6, 8.0, 'Très bien encadré, bonne expérience.'),
+(7, 7, 7.5, 'Correct, mais pourrait être amélioré.'),
+(8, 8, 7.0, 'Bonne activité de plein air.'),
+(9, 9, 6.5, 'Sympathique mais un peu répétitif.'),
+(10, 10, 8.0, 'Atelier très enrichissant.');
 
 -- Insertion Administrateur
 
@@ -234,6 +234,9 @@ GROUP BY P.idAdherent
 ORDER BY NombreSeances DESC
 LIMIT 1;
 
+SELECT *
+FROM participant_max_seances;
+
 -- Trouver le prix moyen par activité pour chaque participant
 
 CREATE VIEW Prix_Moyen_Par_Activite AS
@@ -247,6 +250,9 @@ JOIN Seances S ON P.idSeance = S.ID
 JOIN Activites AC ON S.idActivite = AC.ID
 JOIN Adherents A ON P.idAdherent = A.ID
 GROUP BY P.idAdherent, S.idActivite;
+
+SELECT *
+FROM Prix_Moyen_Par_Activite;
 
 -- Afficher les notes d'appréciation pour chaque activité
 
@@ -262,6 +268,9 @@ FROM Evaluations E
 JOIN Activites AC ON E.idActivite = AC.ID
 JOIN Adherents A ON E.idAdherent = A.ID;
 
+SELECT *
+FROM Notes_Par_Activite;
+
 -- Afficher la moyenne des notes d'appréciation pour toutes les activités
 
 CREATE VIEW Moyenne_Notes_Activites AS
@@ -269,9 +278,13 @@ SELECT
     AC.ID AS idActivite,
     AC.Nom AS Activite,
     AVG(E.Note) AS MoyenneNote
-FROM EvaluationsActivites E
+FROM Evaluations E
 JOIN Activites AC ON E.idActivite = AC.ID
 GROUP BY AC.ID, AC.Nom;
+
+SELECT *
+FROM Moyenne_Notes_Activites;
+
 
 -- Afficher le nombre de participants pour chaque activité
 
@@ -284,6 +297,10 @@ FROM Seances S
 JOIN Participations P ON S.ID = P.idSeance
 JOIN Activites AC ON S.idActivite = AC.ID
 GROUP BY S.idActivite, AC.Nom;
+
+SELECT *
+FROM Nombre_Participants_Par_Activite;
+
 
 -- Afficher le nombre de participant moyen pour chaque mois (À retravailler)
 
@@ -303,6 +320,9 @@ FROM (
 ) AS ParticipationParSeance
 GROUP BY YEAR(ParticipationParSeance.DateHeure), MONTH(ParticipationParSeance.DateHeure);
 
+SELECT *
+FROM Moyenne_Participants_Par_Mois;
+
 
 -- Procédures stockées /////////////////////////////////////////////////////////////////////////////////
 
@@ -312,7 +332,7 @@ GROUP BY YEAR(ParticipationParSeance.DateHeure), MONTH(ParticipationParSeance.Da
 DELIMITER //
 
 CREATE PROCEDURE AjouterParticipant(
-    IN p_idAdherent VARCHAR(20),
+    IN p_idAdherent INT,
     IN p_idSeance INT
 )
 BEGIN
@@ -342,6 +362,8 @@ END;
 
 DELIMITER ;
 
+CALL AjouterParticipant(1, 101);
+
 -- Cette procédure calcule les revenus générés par une activité en fonction des séances associées.
 
 DELIMITER //
@@ -360,6 +382,10 @@ END;
 //
 
 DELIMITER ;
+
+CALL CalculerRevenusActivite(10, @revenus);
+SELECT @revenus AS RevenusTotaux;
+
 
 -- Cette procédure permet à un adhérent d’ajouter une évaluation pour une activité qu’il a déjà suivie.
 
@@ -383,7 +409,7 @@ BEGIN
 
     IF participationExist > 0 THEN
         -- Ajouter l'évaluation
-        INSERT INTO EvaluationsActivites (idAdherent, idActivite, Note, Commentaire) 
+        INSERT INTO Evaluations (idAdherent, idActivite, Note, Commentaire) 
         VALUES (p_idAdherent, p_idActivite, p_note, p_commentaire);
     ELSE
         SIGNAL SQLSTATE '45000'
@@ -393,6 +419,9 @@ END;
 //
 
 DELIMITER ;
+
+CALL AjouterEvaluation(1, 5, 4.5, 'Très bonne activité, bien encadrée!');
+
 
 -- Cette procédure retourne toutes les séances d’une activité où des places sont encore disponibles.
 
@@ -411,6 +440,9 @@ END;
 
 DELIMITER ;
 
+CALL ListerSeancesDisponibles(3);
+
+
 -- Cette procédure supprime un adhérent, ainsi que toutes ses participations et évaluations.
 
 DELIMITER //
@@ -424,7 +456,7 @@ BEGIN
     WHERE idAdherent = p_idAdherent;
 
     -- Supprimer les évaluations de l'adhérent
-    DELETE FROM EvaluationsActivites
+    DELETE FROM Evaluations
     WHERE idAdherent = p_idAdherent;
 
     -- Supprimer l'adhérent
@@ -434,6 +466,9 @@ END;
 //
 
 DELIMITER ;
+
+CALL SupprimerAdherent(1);
+
 
 -- Fonction stockées ///////////////////////////////////////////////////////////////////////////////////
 
@@ -469,10 +504,10 @@ BEGIN
     DECLARE moyenneNotes DECIMAL(3, 2);
 
     SELECT AVG(Note) INTO moyenneNotes
-    FROM EvaluationsActivites
+    FROM Evaluations
     WHERE idActivite = p_idActivite;
 
-    RETURN IFNULL(moyenneNotes, 0.00); -- Retourne 0 si aucune note n'existe
+    RETURN IFNULL(moyenneNotes, 'Aucune évaluation');
 END;
 //
 
