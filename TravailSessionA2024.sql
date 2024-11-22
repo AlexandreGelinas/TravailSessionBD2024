@@ -493,6 +493,8 @@ END;
 
 DELIMITER ;
 
+SELECT NombreParticipantsActivite(1);
+
 -- Cette fonction retourne la moyenne des notes données pour une activité spécifique.
 
 DELIMITER //
@@ -513,11 +515,13 @@ END;
 
 DELIMITER ;
 
+SELECT MoyenneNotesActivite(2);
+
 -- Cette fonction retourne un booléen (1 ou 0) (oui ou non) si un adhérent a participé à une activité.
 
 DELIMITER //
 
-CREATE FUNCTION AParticipeActivite(p_idAdherent VARCHAR(20), p_idActivite INT)
+CREATE FUNCTION AParticipeActivite(p_idAdherent INT, p_idActivite INT)
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
@@ -534,6 +538,8 @@ END;
 //
 
 DELIMITER ;
+
+SELECT AParticipeActivite(1,3);
 
 -- Cette fonction retourne le revenu total généré par une activité en additionnant les prix payés par les participants.
 
@@ -556,6 +562,8 @@ END;
 //
 
 DELIMITER ;
+
+SELECT  RevenuTotalActivite(4);
 
 -- Cette fonction retourne la moyenne des participants par séance pour une activité donnée.
 
@@ -582,7 +590,10 @@ END;
 
 DELIMITER ;
 
+SELECT MoyenneParticipantsParSeance(5);
+
 
 -- Gestion des erreurs /////////////////////////////////////////////////////////////////////////////////
 
--- La gestion des erreurs à été faites à plusieurs endroits dans le projet.
+-- Trois codes d'erreur differents.
+
