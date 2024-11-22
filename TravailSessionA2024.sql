@@ -3,7 +3,7 @@
 
 -- Création des tables ////////////////////////////////////////////////////////////////
 
--- Table Adherents
+-- Table Adherents (ajouter motPasse maybe ?)
 CREATE TABLE Adherents (
     ID VARCHAR(20) PRIMARY KEY,
     Nom VARCHAR(100) NOT NULL,
@@ -221,3 +221,333 @@ INSERT INTO Administrateurs (ID, MotDePasse)
 VALUES
 (101,'Secret1234'),
 (102,'Secret5678');
+
+-- Création des vues ///////////////////////////////////////////////////////////////////////////////////
+
+-- Trouver le participant ayant le nombre de séances le plus élevé
+
+CREATE VIEW Participant_Max_Seances AS
+SELECT P.idAdherent, CONCAT(A.Prenom, ' ', A.Nom) AS NomComplet, COUNT(P.idSeance) AS NombreSeances
+FROM Participations P
+JOIN Adherents A ON P.idAdherent = A.ID
+GROUP BY P.idAdherent
+ORDER BY NombreSeances DESC
+LIMIT 1;
+
+-- Trouver le prix moyen par activité pour chaque participant
+
+CREATE VIEW Prix_Moyen_Par_Activite AS
+SELECT 
+    P.idAdherent,
+    CONCAT(A.Prenom, ' ', A.Nom) AS NomComplet,
+    S.idActivite,
+    AVG(AC.PrixVenteParClient) AS PrixMoyen
+FROM Participations P
+JOIN Seances S ON P.idSeance = S.ID
+JOIN Activites AC ON S.idActivite = AC.ID
+JOIN Adherents A ON P.idAdherent = A.ID
+GROUP BY P.idAdherent, S.idActivite;
+
+-- Afficher les notes d'appréciation pour chaque activité
+
+CREATE VIEW Notes_Par_Activite AS
+SELECT 
+    E.idActivite,
+    AC.Nom AS Activite,
+    E.idAdherent,
+    CONCAT(A.Prenom, ' ', A.Nom) AS NomComplet,
+    E.Note,
+    E.Commentaire
+FROM Evaluations E
+JOIN Activites AC ON E.idActivite = AC.ID
+JOIN Adherents A ON E.idAdherent = A.ID;
+
+-- Afficher la moyenne des notes d'appréciation pour toutes les activités
+
+CREATE VIEW Moyenne_Notes_Activites AS
+SELECT 
+    AC.ID AS idActivite,
+    AC.Nom AS Activite,
+    AVG(E.Note) AS MoyenneNote
+FROM EvaluationsActivites E
+JOIN Activites AC ON E.idActivite = AC.ID
+GROUP BY AC.ID, AC.Nom;
+
+-- Afficher le nombre de participants pour chaque activité
+
+CREATE VIEW Nombre_Participants_Par_Activite AS
+SELECT 
+    S.idActivite,
+    AC.Nom AS Activite,
+    COUNT(P.idAdherent) AS NombreParticipants
+FROM Seances S
+JOIN Participations P ON S.ID = P.idSeance
+JOIN Activites AC ON S.idActivite = AC.ID
+GROUP BY S.idActivite, AC.Nom;
+
+-- Afficher le nombre de participant moyen pour chaque mois (À retravailler)
+
+CREATE VIEW Moyenne_Participants_Par_Mois AS
+SELECT
+    YEAR(ParticipationParSeance.DateHeure) AS Annee,
+    MONTH(ParticipationParSeance.DateHeure) AS Mois,
+    AVG(ParticipationParSeance.NombreParticipants) AS MoyenneParticipants
+FROM (
+    SELECT
+        S.ID AS idSeance,
+        S.DateHeure,
+        COUNT(P.idAdherent) AS NombreParticipants
+    FROM Seances S
+    LEFT JOIN Participations P ON S.ID = P.idSeance
+    GROUP BY S.ID, S.DateHeure
+) AS ParticipationParSeance
+GROUP BY YEAR(ParticipationParSeance.DateHeure), MONTH(ParticipationParSeance.DateHeure);
+
+
+-- Procédures stockées /////////////////////////////////////////////////////////////////////////////////
+
+-- Cette procédure ajoute un participant à une séance,
+-- vérifie s’il reste des places et met à jour le nombre de places disponibles si l’ajout est réussi.
+
+DELIMITER //
+
+CREATE PROCEDURE AjouterParticipant(
+    IN p_idAdherent VARCHAR(20),
+    IN p_idSeance INT
+)
+BEGIN
+    DECLARE placesRestantes INT;
+
+    -- Vérifier le nombre de places restantes
+    SELECT NombrePlaces
+    INTO placesRestantes
+    FROM Seances
+    WHERE ID = p_idSeance;
+
+    IF placesRestantes > 0 THEN
+        -- Ajouter le participant
+        INSERT INTO Participations (idAdherent, idSeance) 
+        VALUES (p_idAdherent, p_idSeance);
+
+        -- Réduire le nombre de places disponibles
+        UPDATE Seances
+        SET NombrePlaces = NombrePlaces - 1
+        WHERE ID = p_idSeance;
+    ELSE
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erreur : Pas de places disponibles pour cette séance.';
+    END IF;
+END;
+//
+
+DELIMITER ;
+
+-- Cette procédure calcule les revenus générés par une activité en fonction des séances associées.
+
+DELIMITER //
+
+CREATE PROCEDURE CalculerRevenusActivite(
+    IN p_idActivite INT,
+    OUT revenusTotaux DECIMAL(10, 2)
+)
+BEGIN
+    SELECT SUM(S.NombrePlaces * A.PrixVenteParClient) AS Revenus
+    INTO revenusTotaux
+    FROM Seances S
+    JOIN Activites A ON S.idActivite = A.ID
+    WHERE A.ID = p_idActivite;
+END;
+//
+
+DELIMITER ;
+
+-- Cette procédure permet à un adhérent d’ajouter une évaluation pour une activité qu’il a déjà suivie.
+
+DELIMITER //
+
+CREATE PROCEDURE AjouterEvaluation(
+    IN p_idAdherent VARCHAR(20),
+    IN p_idActivite INT,
+    IN p_note DECIMAL(3, 2),
+    IN p_commentaire TEXT
+)
+BEGIN
+    DECLARE participationExist INT;
+
+    -- Vérifier si l'adhérent a participé à au moins une séance de l'activité
+    SELECT COUNT(*)
+    INTO participationExist
+    FROM Participations P
+    INNER JOIN Seances S ON P.idSeance = S.ID
+    WHERE P.idAdherent = p_idAdherent AND S.idActivite = p_idActivite;
+
+    IF participationExist > 0 THEN
+        -- Ajouter l'évaluation
+        INSERT INTO EvaluationsActivites (idAdherent, idActivite, Note, Commentaire) 
+        VALUES (p_idAdherent, p_idActivite, p_note, p_commentaire);
+    ELSE
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erreur : L’adhérent ne peut évaluer une activité à laquelle il n’a pas participé.';
+    END IF;
+END;
+//
+
+DELIMITER ;
+
+-- Cette procédure retourne toutes les séances d’une activité où des places sont encore disponibles.
+
+DELIMITER //
+
+CREATE PROCEDURE ListerSeancesDisponibles(
+    IN p_idActivite INT
+)
+BEGIN
+    SELECT S.ID AS idSeance, S.DateHeure, S.NombrePlaces
+    FROM Seances S
+    WHERE S.idActivite = p_idActivite AND S.NombrePlaces > 0
+    ORDER BY S.DateHeure;
+END;
+//
+
+DELIMITER ;
+
+-- Cette procédure supprime un adhérent, ainsi que toutes ses participations et évaluations.
+
+DELIMITER //
+
+CREATE PROCEDURE SupprimerAdherent(
+    IN p_idAdherent VARCHAR(20)
+)
+BEGIN
+    -- Supprimer les participations de l'adhérent
+    DELETE FROM Participations
+    WHERE idAdherent = p_idAdherent;
+
+    -- Supprimer les évaluations de l'adhérent
+    DELETE FROM EvaluationsActivites
+    WHERE idAdherent = p_idAdherent;
+
+    -- Supprimer l'adhérent
+    DELETE FROM Adherents
+    WHERE ID = p_idAdherent;
+END;
+//
+
+DELIMITER ;
+
+-- Fonction stockées ///////////////////////////////////////////////////////////////////////////////////
+
+-- Cette fonction retourne le total de participants ayant assisté à une activité donnée.
+
+DELIMITER //
+
+CREATE FUNCTION NombreParticipantsActivite(p_idActivite INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE totalParticipants INT;
+
+    SELECT COUNT(DISTINCT P.idAdherent) INTO totalParticipants
+    FROM Participations P
+    JOIN Seances S ON P.idSeance = S.ID
+    WHERE S.idActivite = p_idActivite;
+
+    RETURN totalParticipants;
+END;
+//
+
+DELIMITER ;
+
+-- Cette fonction retourne la moyenne des notes données pour une activité spécifique.
+
+DELIMITER //
+
+CREATE FUNCTION MoyenneNotesActivite(p_idActivite INT)
+RETURNS DECIMAL(3, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE moyenneNotes DECIMAL(3, 2);
+
+    SELECT AVG(Note) INTO moyenneNotes
+    FROM EvaluationsActivites
+    WHERE idActivite = p_idActivite;
+
+    RETURN IFNULL(moyenneNotes, 0.00); -- Retourne 0 si aucune note n'existe
+END;
+//
+
+DELIMITER ;
+
+-- Cette fonction retourne un booléen (1 ou 0) (oui ou non) si un adhérent a participé à une activité.
+
+DELIMITER //
+
+CREATE FUNCTION AParticipeActivite(p_idAdherent VARCHAR(20), p_idActivite INT)
+RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+    DECLARE participationExist INT;
+
+    SELECT COUNT(*)
+    INTO participationExist
+    FROM Participations P
+    INNER JOIN Seances S ON P.idSeance = S.ID
+    WHERE P.idAdherent = p_idAdherent AND S.idActivite = p_idActivite;
+
+    RETURN (participationExist > 0);
+END;
+//
+
+DELIMITER ;
+
+-- Cette fonction retourne le revenu total généré par une activité en additionnant les prix payés par les participants.
+
+DELIMITER //
+
+CREATE FUNCTION RevenuTotalActivite(p_idActivite INT)
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE revenuTotal DECIMAL(10, 2);
+
+    SELECT SUM(A.PrixVenteParClient * COUNT(DISTINCT P.idAdherent)) INTO revenuTotal
+    FROM Seances S
+    JOIN Activites A ON S.idActivite = A.ID
+    LEFT JOIN Participations P ON S.ID = P.idSeance
+    WHERE S.idActivite = p_idActivite;
+
+    RETURN IFNULL(revenuTotal, 0.00);
+END;
+//
+
+DELIMITER ;
+
+-- Cette fonction retourne la moyenne des participants par séance pour une activité donnée.
+
+DELIMITER //
+
+CREATE FUNCTION MoyenneParticipantsParSeance(p_idActivite INT)
+RETURNS DECIMAL(5, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE moyenneParticipants DECIMAL(5, 2);
+
+    SELECT AVG(NombreParticipants) INTO moyenneParticipants
+    FROM (
+        SELECT S.ID AS idSeance, COUNT(P.idAdherent) AS NombreParticipants
+        FROM Seances S
+        LEFT JOIN Participations P ON S.ID = P.idSeance
+        WHERE S.idActivite = p_idActivite
+        GROUP BY S.ID
+    ) AS ParticipantsParSeance;
+
+    RETURN IFNULL(moyenneParticipants, 0.00);
+END;
+//
+
+DELIMITER ;
+
+
+-- Gestion des erreurs /////////////////////////////////////////////////////////////////////////////////
+
+-- La gestion des erreurs à été faites à plusieurs endroits dans le projet.
