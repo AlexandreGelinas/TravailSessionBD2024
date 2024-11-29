@@ -262,7 +262,7 @@ VALUES
 
 -- Insertion Administrateur
 
-INSERT INTO Administrateurs (ID, MotDePasse)
+INSERT INTO Administrateurs (ID, Prenom, Nom, MotDePasse)
 VALUES
 (101,'Alexandre','Gélinas','Secret1234'),
 (102,'David','Paré','Secret5678');
