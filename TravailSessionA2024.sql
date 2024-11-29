@@ -13,7 +13,7 @@ CREATE TABLE Adherents (
     Age INT NOT NULL, 
     CONSTRAINT Verif_Age CHECK (Age >= 18),
     MotDePasse VARCHAR(255) NOT NULL,
-    CodeAdherent VARCHAR(255)
+    CodeAdherent VARCHAR(255) -- Crée par un trigger
 );
 -- Table Activites
 CREATE TABLE Activites (
@@ -46,6 +46,8 @@ CREATE TABLE Participations (
 -- Table Administrateurs
 CREATE TABLE Administrateurs (
     ID INT AUTO_INCREMENT PRIMARY KEY,
+    Prenom VARCHAR(100) NOT NULL,
+    Nom VARCHAR(100) NOT NULL,
     MotDePasse VARCHAR(255) NOT NULL
 );
 
@@ -141,18 +143,18 @@ DELIMITER ;
 
 -- Insertion Adherents
 
-INSERT INTO Adherents (Nom, Prenom, Adresse, DateNaissance, Age, MotDePasse, CodeAdherent)
+INSERT INTO Adherents (Nom, Prenom, Adresse, DateNaissance, Age, MotDePasse, CodeAdherent) -- Le codeAdherent va etre modifier avec le trigger donc entrer n'importe quoi
 VALUES
-('Lemoine', 'Alice', '123 Rue de Paris, Paris', '1995-06-15', 28, 'Pomme123', 'AL-1995-001'),
-('Benoit', 'Jean', '456 Avenue de Lyon, Lyon', '1990-11-10', 33, 'Orange123', 'BE-1990-002'),
-('Lopez', 'Marie', '789 Boulevard de Lille, Lille', '1985-04-22', 38, 'Courge123', 'LO-1985-003'),
-('Carter', 'David', '321 Allée des Pins, Toulouse', '1998-09-15', 25, 'Aubergine123', 'CA-1998-004'),
-('Garcia', 'Emma', '654 Place des Érables, Marseille', '1992-03-12', 31, 'Citrouille123', 'GA-1992-005'),
-('Martin', 'Paul', '987 Chemin des Roses, Nice', '1987-01-05', 36, 'Raisin123', 'MA-1987-006'),
-('Simon', 'Thomas', '246 Rue de la Forêt, Bordeaux', '1999-08-07', 24, 'Concombre123', 'SI-1999-007'),
-('Roux', 'Camille', '369 Rue des Vignes, Nantes', '1991-12-19', 32, 'Zuccini123', 'RO-1991-008'),
-('Nicolas', 'Benjamin', '159 Avenue des Champs, Strasbourg', '1988-02-27', 35, 'Poivron123', 'NI-1988-009'),
-('Eloise', 'Lucie', '753 Rue des Lilas, Grenoble', '1996-05-30', 27, 'Tomate123', 'EL-1996-010');
+('Lemoine', 'Alice', '123 Rue de Paris, Paris', '1995-06-15', 28, 'Pomme123', 'AL'),
+('Benoit', 'Jean', '456 Avenue de Lyon, Lyon', '1990-11-10', 33, 'Orange123', 'BE'),
+('Lopez', 'Marie', '789 Boulevard de Lille, Lille', '1985-04-22', 38, 'Courge123', 'LO'),
+('Carter', 'David', '321 Allée des Pins, Toulouse', '1998-09-15', 25, 'Aubergine123', 'CA'),
+('Garcia', 'Emma', '654 Place des Érables, Marseille', '1992-03-12', 31, 'Citrouille123', 'GA'),
+('Martin', 'Paul', '987 Chemin des Roses, Nice', '1987-01-05', 36, 'Raisin123', 'MA'),
+('Simon', 'Thomas', '246 Rue de la Forêt, Bordeaux', '1999-08-07', 24, 'Concombre123', 'SI'),
+('Roux', 'Camille', '369 Rue des Vignes, Nantes', '1991-12-19', 32, 'Zuccini123', 'R'),
+('Nicolas', 'Benjamin', '159 Avenue des Champs, Strasbourg', '1988-02-27', 35, 'Poivron123', 'NI'),
+('Eloise', 'Lucie', '753 Rue des Lilas, Grenoble', '1996-05-30', 27, 'Tomate123', 'EL');
 
 
 -- Insertion Activites
@@ -189,16 +191,16 @@ VALUES
 
 INSERT INTO Participations (idAdherent, idSeance, Note)
 VALUES 
-('AL-1995-123', 1, 8.5),
-('JB-1990-456', 2, 9.0),
-('ML-1985-789', 3, 7.5),
-('DC-1998-321', 4, 8.0),
-('EG-1992-654', 5, 9.5),
-('PM-1987-987', 6, NULL),
-('TS-1999-246', 7, 8.0),
-('CR-1991-369', 8, 7.0),
-('BN-1988-159', 9, 6.5),
-('LE-1996-753', 10, 8.0);
+(1, 1, 8.5),
+(2, 2, 9.0),
+(3, 3, 7.5),
+(4, 4, 8.0),
+(5, 5, 9.5),
+(6, 6, NULL),
+(7, 7, 8.0),
+(8, 8, 7.0),
+(9, 9, 6.5),
+(10, 10, 8.0);
 
 -- Insertion EvaluationActivites
 
@@ -219,8 +221,8 @@ VALUES
 
 INSERT INTO Administrateurs (ID, MotDePasse)
 VALUES
-(101,'Secret1234'),
-(102,'Secret5678');
+(101,'Alexandre','Gélinas','Secret1234'),
+(102,'David','Paré','Secret5678');
 
 -- Création des vues ///////////////////////////////////////////////////////////////////////////////////
 
