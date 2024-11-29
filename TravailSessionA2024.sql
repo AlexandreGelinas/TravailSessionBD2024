@@ -82,7 +82,7 @@ BEGIN
     DECLARE anneeNaissance CHAR(4);
     DECLARE randomNum CHAR(3);
 
-    -- Vérification des données obligatoires (Gestion d'erreur)
+    -- Vérification des données obligatoires (GESTION D'ERREURS)
     IF NEW.Prenom IS NULL OR NEW.Nom IS NULL THEN
         SIGNAL SQLSTATE '45001'
         SET MESSAGE_TEXT = 'Le prénom ou le nom ne peut pas être NULL.';
@@ -108,15 +108,12 @@ BEGIN
     -- Troisième partie (nombre aléatoire 150)
     SET randomNum = LPAD(FLOOR(1 + (RAND() * 999)), 3, '0');
 
-    -- Vérification que le CodeAdherent est unique (si nécessaire)
-    -- Cela nécessiterait un SELECT pour vérifier l'unicité dans une table ayant une clé unique.
-
     -- Produit final
     SET NEW.CodeAdherent = CONCAT(initiales, '-', anneeNaissance, '-', randomNum);
 END;
 
 
--- Trigger pour gérer le nombre de place dispo dans chaque séance ( Gestion d'erreur)
+-- Trigger pour gérer le nombre de place dispo dans chaque séance (GESTION D'ERREURS)
 
 DELIMITER //
 
@@ -133,7 +130,7 @@ BEGIN
 
     IF nbPlacesRestantes IS NULL THEN
         SIGNAL SQLSTATE '22001' -- Erreur de données 
-        SET MESSAGE_TEXT = 'Erreur : La séance associée à cette participation n\'existe pas.';
+        SET MESSAGE_TEXT = 'Erreur : La séance associée à cette participation existe pas.';
     END IF;
 
     -- Vérification de places dispo
@@ -144,8 +141,8 @@ BEGIN
 
     -- Vérification de l'intégrité des données : ID de séance valide
     IF NEW.idSeance <= 0 THEN
-        SIGNAL SQLSTATE '22003' -- Erreur de données : ID invalide
-        SET MESSAGE_TEXT = 'Erreur : L\'ID de la séance est invalide.';
+        SIGNAL SQLSTATE '22003' -- Erreur de données
+        SET MESSAGE_TEXT = 'Erreur : ID de la séance est invalide.';
     END IF;
 
     -- Mise à jour du nombre de places restantes
@@ -491,7 +488,7 @@ DELIMITER ;
 CALL ListerSeancesDisponibles(3);
 
 
--- Cette procédure supprime un adhérent, ainsi que toutes ses participations et évaluations.
+-- Cette procédure supprime un adhérent, ainsi que toutes ses participations et évaluations. (GESTION D'ERREURS 2 différentes)
 
 DELIMITER //
 
@@ -499,6 +496,40 @@ CREATE PROCEDURE SupprimerAdherent(
     IN p_idAdherent VARCHAR(20)
 )
 BEGIN
+    DECLARE adherentExiste INT;
+    DECLARE participationsExiste INT;
+    DECLARE evaluationsExiste INT;
+
+    -- Adhérent existe? 
+    SELECT COUNT(*) INTO adherentExiste
+    FROM Adherents
+    WHERE ID = p_idAdherent;
+
+    IF adherentExiste = 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Erreur : adhérent spécifié existe pas.';
+    END IF;
+
+    -- Vérifier si l'adhérent a encore des participations
+    SELECT COUNT(*) INTO participationsExiste
+    FROM Participations
+    WHERE idAdherent = p_idAdherent;
+
+    IF participationsExiste > 0 THEN
+        SIGNAL SQLSTATE '2627' 
+        SET MESSAGE_TEXT = 'Erreur : Impossible de supprimer adhérent car des participations existent encore.';
+    END IF;
+
+    -- Vérifier si l'adhérent a encore des évaluations
+    SELECT COUNT(*) INTO evaluationsExiste
+    FROM Evaluations
+    WHERE idAdherent = p_idAdherent;
+
+    IF evaluationsExiste > 0 THEN
+        SIGNAL SQLSTATE '2627' 
+        SET MESSAGE_TEXT = 'Erreur : Impossible de supprimer adhérent car des évaluations existent encore.';
+    END IF;
+
     -- Supprimer les participations de l'adhérent
     DELETE FROM Participations
     WHERE idAdherent = p_idAdherent;
@@ -514,6 +545,7 @@ END;
 //
 
 DELIMITER ;
+
 
 CALL SupprimerAdherent(1);
 
