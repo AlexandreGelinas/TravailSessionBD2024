@@ -73,30 +73,50 @@ SET NEW.Age = YEAR(CURDATE()) - YEAR(NEW.DateNaissance);
 
 -- Trigger pour construire le numéro d'identification de l'adhérent (AG-1995-150)
 
-create definer = `1372735`@`%` trigger Generer_ID_Adherent
-    before insert
-    on adherents
-    for each row
+CREATE DEFINER = `1372735`@`%` TRIGGER Generer_ID_Adherent
+BEFORE INSERT
+ON Adherents
+FOR EACH ROW
 BEGIN
     DECLARE initiales VARCHAR(3);
     DECLARE anneeNaissance CHAR(4);
     DECLARE randomNum CHAR(3);
 
-    -- Première partie(AG)
+    -- Vérification des données obligatoires (Gestion d'erreur)
+    IF NEW.Prenom IS NULL OR NEW.Nom IS NULL THEN
+        SIGNAL SQLSTATE '45001'
+        SET MESSAGE_TEXT = 'Le prénom ou le nom ne peut pas être NULL.';
+    END IF;
+
+    IF NEW.DateNaissance IS NULL THEN
+        SIGNAL SQLSTATE '45002'
+        SET MESSAGE_TEXT = 'La date de naissance ne peut pas être NULL.';
+    END IF;
+
+    -- Vérification que la date de naissance est dans le passé
+    IF NEW.DateNaissance >= CURDATE() THEN
+        SIGNAL SQLSTATE '45003'
+        SET MESSAGE_TEXT = 'La date de naissance doit être une date passée.';
+    END IF;
+
+    -- Première partie (initiales AG)
     SET initiales = CONCAT(LEFT(NEW.Prenom, 1), LEFT(NEW.Nom, 1));
 
-    -- Deuxième partie(1995)
+    -- Deuxième partie (année de naissance 1995)
     SET anneeNaissance = YEAR(NEW.DateNaissance);
 
-    -- Troisième partie(150)
+    -- Troisième partie (nombre aléatoire 150)
     SET randomNum = LPAD(FLOOR(1 + (RAND() * 999)), 3, '0');
+
+    -- Vérification que le CodeAdherent est unique (si nécessaire)
+    -- Cela nécessiterait un SELECT pour vérifier l'unicité dans une table ayant une clé unique.
 
     -- Produit final
     SET NEW.CodeAdherent = CONCAT(initiales, '-', anneeNaissance, '-', randomNum);
 END;
 
 
--- Trigger pour gérer le nombre de place dispo dans chaque séance
+-- Trigger pour gérer le nombre de place dispo dans chaque séance ( Gestion d'erreur)
 
 DELIMITER //
 
@@ -104,6 +124,31 @@ CREATE TRIGGER MiseAJour_Places_ApresInsertion
 AFTER INSERT ON Participations
 FOR EACH ROW
 BEGIN
+    DECLARE nbPlacesRestantes INT;
+
+    -- Vérification que la séance existe
+    SELECT NombrePlaces INTO nbPlacesRestantes
+    FROM Seances
+    WHERE ID = NEW.idSeance;
+
+    IF nbPlacesRestantes IS NULL THEN
+        SIGNAL SQLSTATE '22001' -- Erreur de données 
+        SET MESSAGE_TEXT = 'Erreur : La séance associée à cette participation n\'existe pas.';
+    END IF;
+
+    -- Vérification de places dispo
+    IF nbPlacesRestantes <= 0 THEN
+        SIGNAL SQLSTATE '22002' -- Erreur de données 
+        SET MESSAGE_TEXT = 'Erreur : Il n\'y a plus de places disponibles pour cette séance.';
+    END IF;
+
+    -- Vérification de l'intégrité des données : ID de séance valide
+    IF NEW.idSeance <= 0 THEN
+        SIGNAL SQLSTATE '22003' -- Erreur de données : ID invalide
+        SET MESSAGE_TEXT = 'Erreur : L\'ID de la séance est invalide.';
+    END IF;
+
+    -- Mise à jour du nombre de places restantes
     UPDATE Seances
     SET NombrePlaces = NombrePlaces - 1
     WHERE ID = NEW.idSeance;
@@ -112,8 +157,9 @@ END;
 
 DELIMITER ;
 
+
 -- Trigger qui permet d'insérer des participants dans une séance si le nb max n'est pas atteint.
--- Sinon, message d'erreur pour dire qu'il n'y a plus de places.
+-- Sinon, message d'erreur pour dire qu'il n'y a plus de places. ( Gestion d'erreur)
 
 DELIMITER //
 
@@ -597,5 +643,5 @@ SELECT MoyenneParticipantsParSeance(5);
 
 -- Gestion des erreurs /////////////////////////////////////////////////////////////////////////////////
 
--- Trois codes d'erreur differents.
+-- Trois codes d'erreur differents identifié à coté des descriptions de fonctions/parametres/declencheurs ou vues. ( Gestion d'erreur)
 
